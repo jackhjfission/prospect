@@ -1,0 +1,35 @@
+{
+  "name": "Prospect",
+  "image": "prospect:v0.0.0",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/prospector/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/home/prospector/workspace",
+  "postStartCommand": "/home/prospector/on-start-container.sh",
+  "runArgs": [
+	"--env-file", "${localWorkspaceFolder}/.devcontainer/.env",
+	"--memory=8g",
+	"--memory-swap=8g"
+  ],
+  "customizations": {
+  	"vscode": {
+		"extensions": [
+      "ms-python.isort",
+      "ms-python.vscode-pylance",
+      "ms-toolsai.vscode-jupyter-slideshow",
+      "ms-toolsai.jupyter-renderers",
+      "ms-toolsai.jupyter-keymap",
+      "ms-toolsai.vscode-jupyter-cell-tags",
+      "ms-toolsai.jupyter",
+      "ms-python.python",
+      "saoudrizwan.claude-dev",
+      "ms-python.debugpy",
+      "mhutchie.git-graph"
+    ]
+	}
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/prospector/.ssh,type=bind,consistency=cached"
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  }
+}

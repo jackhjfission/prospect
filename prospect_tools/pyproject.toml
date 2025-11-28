@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "prospect_tools"
+version = "0.0.0"
+description = "Shared utils for the Prospect project."
+authors = ["Jack Coggins <jackhjfission@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+click = "^8.0"
+
+[tool.poetry.scripts]
+prospect-tools = "prospect_tools.cli:main"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+# ignore unused imports in __init__.py files
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

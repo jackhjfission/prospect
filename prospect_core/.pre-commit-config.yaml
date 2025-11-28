@@ -1,0 +1,46 @@
+repos:
+  # BLACK
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.1.0
+    hooks:
+      - id: black
+  # RUFF
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.4
+    hooks:
+      - id: ruff
+        args: [--fix, --target-version=py312]
+  # PRE-COMMIT
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  # ISORT
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        name: isort (python)
+  # MYPY
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.0
+    hooks:
+      - id: mypy
+        args: [--strict, --ignore-missing-imports, --config-file=template_core/mypy.ini]
+  # NBSTRIPOUT
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.9.1
+    hooks:
+     - id: nbqa-black # BLACK FOR NOTEBOOKS
+     - id: nbqa-ruff # RUFF FOR NOTEBOOKS
+       args: [--ignore=E402, --fix, --target-version=py312]
+     - id: nbqa-isort # ISORT FOR NOTEBOOKS
+       args: [--profile=black]
