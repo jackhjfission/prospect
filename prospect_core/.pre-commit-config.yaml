@@ -30,7 +30,7 @@ repos:
     rev: v1.17.0
     hooks:
       - id: mypy
-        args: [--strict, --ignore-missing-imports, --config-file=template_core/mypy.ini]
+        args: [--strict, --ignore-missing-imports, --config-file=prospect_core/mypy.ini]
   # NBSTRIPOUT
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.1
