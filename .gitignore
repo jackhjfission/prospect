@@ -14,9 +14,7 @@ env/
 .coverage
 htmlcov/
 *.log
-
-# Poetry
-poetry.lock
+mypy.ini
 
 # IDEs
 .vscode/
@@ -30,5 +28,4 @@ poetry.lock
 Thumbs.db
 
 # Project specific
-prototyping/
 scratchpads/
