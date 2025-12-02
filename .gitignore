@@ -14,6 +14,7 @@ env/
 .coverage
 htmlcov/
 *.log
+mypy.ini
 
 # Poetry
 poetry.lock
