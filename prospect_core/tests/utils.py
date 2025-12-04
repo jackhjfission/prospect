@@ -9,3 +9,14 @@ class CanSpecListOfStr(Protocol):
 class CanSpecGlobals(Protocol):
     @property
     def param(self) -> dict[str, Any]: ...
+
+
+def escape_braces(regex: str) -> str:
+    return (
+        regex.replace("(", r"\(")
+        .replace(")", r"\)")
+        .replace("[", r"\[")
+        .replace("]", r"\]")
+        .replace("{", r"\{")
+        .replace("}", r"\}")
+    )

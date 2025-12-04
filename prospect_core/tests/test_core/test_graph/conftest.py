@@ -2,12 +2,8 @@ import pytest
 
 from prospect_core.core.graph import Edge
 
-from ...utils import CanSpecListOfStr
-from .components import (
-    SpyAggMethods,
-    SpyNode,
-    SpyPullMethods,
-)
+from ...utils import CanSpecGlobals, CanSpecListOfStr
+from .components import Globals, SpyAggMethods, SpyNode, SpyPullMethods
 
 
 @pytest.fixture
@@ -99,3 +95,13 @@ def edges(
     request: CanSpecListOfStr,
 ) -> list[Edge]:
     return [_ for _ in [edge10] if _.name in request.param]
+
+
+@pytest.fixture
+def globals(
+    request: CanSpecGlobals,
+) -> Globals:
+    default = {"global_var0": 75}
+    if hasattr(request, "param"):
+        return Globals(**request.param)  # type: ignore
+    return Globals(**default)  # type: ignore

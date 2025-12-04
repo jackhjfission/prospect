@@ -62,18 +62,23 @@ def _validate_id_and_name_unique(value: list[HasIdAndName]) -> list[HasIdAndName
     id_v_dict: dict[int, list[tuple[int, str]]] = {_.id: [] for _ in value}
     for v in value:
         id_v_dict[v.id].append((v.id, v.name))
-
     dups_ids = {k: v for k, v in id_v_dict.items() if len(v) > 1}
-    if dups_ids:
-        raise ValueError(f"Duplicated ids: {dups_ids}")
 
     name_v_dict: dict[str, list[tuple[int, str]]] = {_.name: [] for _ in value}
     for v in value:
         name_v_dict[v.name].append((v.id, v.name))
+    dups_names = {k: v for k, v in name_v_dict.items() if len(v) > 1}
 
-    dups_names = {k: v for k, v in id_v_dict.items() if len(v) > 1}
-    if dups_names:
+    if dups_ids and not dups_names:
+        raise ValueError(f"Duplicated ids: {dups_ids}")
+
+    if dups_names and not dups_ids:
         raise ValueError(f"Duplicated names: {dups_names}")
+
+    if dups_names and dups_ids:
+        raise ValueError(
+            f"Duplicated ids: {dups_ids}.\n" f"Duplicated names: {dups_names}.\n",
+        )
 
     return value
 

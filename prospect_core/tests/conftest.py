@@ -1,10 +1,8 @@
-from typing import Callable, Protocol
+from typing import Any, Callable, Protocol
 
 import pytest
 
 from prospect_core.core.graph import Edge, Graph, Node
-
-from .utils import CanSpecGlobals
 
 
 class HasAsDict(Protocol):
@@ -17,13 +15,13 @@ def graph(
     spy_pull_methods: HasAsDict,
     nodes: list[Node],  # type: ignore[type-arg]
     edges: list[Edge],
-    request: CanSpecGlobals,
+    globals: dict[str, Any],
 ) -> Graph:  # type: ignore[type-arg]
 
     return Graph(
         nodes=nodes,
         edges=edges,
-        globals=request.param,
+        globals=globals,
         pull_methods=spy_pull_methods.as_dict(),
         agg_methods=spy_agg_methods.as_dict(),
     )
