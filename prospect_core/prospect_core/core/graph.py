@@ -15,6 +15,10 @@ from typing import (
 
 from pydantic import AfterValidator, BaseModel, Field, model_validator
 
+# edges should make their own names
+# edges should not be able to have upstream and downstream node idsequal
+
+
 # TypeVar for dict-like types, particularly TypedDict subclasses
 # Using Mapping as the bound since TypedDict is compatible with Mapping
 BaseVariablesT = TypeVar("BaseVariablesT", bound=Mapping[str, Any])
@@ -261,12 +265,12 @@ class Graph(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, Glob
         return self
 
     @cached_property
-    def node_ids(self) -> set[int]:
-        return {_.id for _ in self.nodes}
+    def node_ids(self) -> list[int]:
+        return sorted([_.id for _ in self.nodes])
 
     @cached_property
-    def edge_ids(self) -> set[int]:
-        return {_.id for _ in self.edges}
+    def edge_ids(self) -> list[int]:
+        return sorted([_.id for _ in self.edges])
 
     @cached_property
     def nodes_as_dict(
@@ -283,7 +287,7 @@ class Graph(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, Glob
         # find nodes with no edges pointing upstream (eg, they are never present in downstream_node_id)
         # these are the root nodes
         non_root_node_ids = {_.downstream_node_id for _ in self.edges}
-        root_node_ids = self.node_ids - non_root_node_ids
+        root_node_ids = set(self.node_ids) - non_root_node_ids
         return [_ for _ in self.nodes if _.id in root_node_ids]
 
     @cached_property
@@ -291,5 +295,5 @@ class Graph(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, Glob
         # find nodes with no edges pointing downstream (eg, they are never present in upstream_node_id)
         # these are the leaf nodes
         non_leaf_node_ids = {_.upstream_node_id for _ in self.edges}
-        leaf_node_ids = self.node_ids - non_leaf_node_ids
+        leaf_node_ids = set(self.node_ids) - non_leaf_node_ids
         return [_ for _ in self.nodes if _.id in leaf_node_ids]

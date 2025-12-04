@@ -11,6 +11,7 @@ from .components import (
     Metadata,
     PulledVariables,
     SpyAggMethods,
+    SpyNode,
     SpyPullMethods,
 )
 
@@ -466,3 +467,105 @@ def test_Graph_warns_if_orphan_node(
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
+
+
+@pytest.mark.parametrize(
+    "nodes, edges, expected_node_ids, expected_edge_ids",
+    [
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node00->node02"],
+            [0, 1, 2],
+            [10, 30],
+            id="sample0",
+        ),
+        pytest.param(
+            ["node02", "node01", "node00"],
+            ["edge_node00->node02", "edge_node00->node01"],
+            [0, 1, 2],
+            [10, 30],
+            id="sample0_reversed",
+        ),
+    ],
+    indirect=["nodes", "edges"],
+)
+def test_Graph_ids(
+    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    expected_node_ids: list[int],
+    expected_edge_ids: list[int],
+) -> None:
+    """Test output of node_ids and edge_ids."""
+    assert graph.node_ids == expected_node_ids
+    assert graph.edge_ids == expected_edge_ids
+
+
+@pytest.mark.parametrize(
+    "nodes, edges",
+    [
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node00->node02"],
+            id="sample0",
+        ),
+    ],
+    indirect=["nodes", "edges"],
+)
+def test_Graph_as_dict(
+    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    node00: SpyNode,
+    node01: SpyNode,
+    node02: SpyNode,
+    edge00_01: Edge,
+    edge00_02: Edge,
+) -> None:
+    """Test behaviour of as_dict functions."""
+    assert graph.nodes_as_dict == {
+        0: node00,
+        1: node01,
+        2: node02,
+    }
+    assert graph.edges_as_dict == {
+        10: edge00_01,
+        30: edge00_02,
+    }
+
+
+@pytest.mark.parametrize(
+    "nodes, edges, expected_root_node_ids, expected_leaf_node_ids",
+    [
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node00->node02"],
+            [0],
+            [1, 2],
+            id="one_root_two_leaves",
+        ),
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node02", "edge_node01->node02"],
+            [0, 1],
+            [2],
+            id="two_roots_one_leaf",
+        ),
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node01->node02"],
+            [0],
+            [2],
+            id="one_root_one_leaf",
+        ),
+    ],
+    indirect=["nodes", "edges"],
+)
+def test_Graph_leaf_root_nodes(
+    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    expected_root_node_ids: list[int],
+    expected_leaf_node_ids: list[int],
+) -> None:
+    """Test behaviour of root_nodes and leaf_nodes."""
+
+    root_node_ids = [_.id for _ in graph.root_nodes]
+    assert root_node_ids == expected_root_node_ids
+
+    leaf_node_ids = [_.id for _ in graph.leaf_nodes]
+    assert leaf_node_ids == expected_leaf_node_ids

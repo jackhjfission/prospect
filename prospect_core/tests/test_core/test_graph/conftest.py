@@ -41,8 +41,8 @@ def node01() -> SpyNode:
         id=1,
         name="node01",
         base_variables={
-            "base_var0": 10,
-            "base_var1": 100,
+            "base_var0": 20,
+            "base_var1": 200,
         },
         pulled_variables={
             "pulled_var0": None,
@@ -55,7 +55,26 @@ def node01() -> SpyNode:
 
 
 @pytest.fixture
-def edge10() -> Edge:
+def node02() -> SpyNode:
+    return SpyNode(
+        id=2,
+        name="node02",
+        base_variables={
+            "base_var0": 30,
+            "base_var1": 300,
+        },
+        pulled_variables={
+            "pulled_var0": None,
+            "pulled_var1": None,
+        },
+        metadata={"metadata_var0": "node02"},
+        pull_from_downstream_agg_key="pass_through",
+        pull_from_upstream_agg_key="pass_through",
+    )
+
+
+@pytest.fixture
+def edge00_01() -> Edge:
     """Edge node00->node01"""
     return Edge(
         id=10,
@@ -68,13 +87,26 @@ def edge10() -> Edge:
 
 
 @pytest.fixture
-def edge20() -> Edge:
+def edge01_02() -> Edge:
     """Edge node00->node01"""
     return Edge(
         id=20,
-        name="edge_node01->node00",
+        name="edge_node01->node02",
         upstream_node_id=1,
-        downstream_node_id=0,
+        downstream_node_id=2,
+        downstream_method_key="get",
+        upstream_method_key="get",
+    )
+
+
+@pytest.fixture
+def edge00_02() -> Edge:
+    """Edge node00->node01"""
+    return Edge(
+        id=30,
+        name="edge_node00->node02",
+        upstream_node_id=0,
+        downstream_node_id=2,
         downstream_method_key="get",
         upstream_method_key="get",
     )
@@ -84,17 +116,20 @@ def edge20() -> Edge:
 def nodes(
     node00: SpyNode,
     node01: SpyNode,
+    node02: SpyNode,
     request: CanSpecListOfStr,
 ) -> list[SpyNode]:
-    return [_ for _ in [node00, node01] if _.name in request.param]
+    return [_ for _ in [node00, node01, node02] if _.name in request.param]
 
 
 @pytest.fixture
 def edges(
-    edge10: Edge,
+    edge00_01: Edge,
+    edge00_02: Edge,
+    edge01_02: Edge,
     request: CanSpecListOfStr,
 ) -> list[Edge]:
-    return [_ for _ in [edge10] if _.name in request.param]
+    return [_ for _ in [edge00_01, edge00_02, edge01_02] if _.name in request.param]
 
 
 @pytest.fixture
