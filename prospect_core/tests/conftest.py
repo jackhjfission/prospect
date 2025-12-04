@@ -15,13 +15,13 @@ def graph(
     spy_pull_methods: HasAsDict,
     nodes: list[Node],  # type: ignore[type-arg]
     edges: list[Edge],
-    globals: dict[str, Any],
+    global_variables: dict[str, Any],
 ) -> Graph:  # type: ignore[type-arg]
 
     return Graph(
         nodes=nodes,
         edges=edges,
-        globals=globals,
+        global_variables=global_variables,
         pull_methods=spy_pull_methods.as_dict(),
         agg_methods=spy_agg_methods.as_dict(),
     )

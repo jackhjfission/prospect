@@ -26,7 +26,7 @@ class Metadata(TypedDict):
     metadata_var0: str
 
 
-class Globals(TypedDict):
+class GlobalVariables(TypedDict):
     global_var0: int
 
 
@@ -59,7 +59,7 @@ class SpyPullMethods(BaseModel):
         self,
         direction: Direction,
         edge: Edge,
-        graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+        graph: Graph[BaseVariables, PulledVariables, Metadata, GlobalVariables],
     ) -> PulledVariables:
 
         if direction == Direction.from_upstream:
@@ -72,7 +72,9 @@ class SpyPullMethods(BaseModel):
 
     def as_dict(
         self,
-    ) -> dict[str, PullMethod[BaseVariables, PulledVariables, Metadata, Globals]]:
+    ) -> dict[
+        str, PullMethod[BaseVariables, PulledVariables, Metadata, GlobalVariables]
+    ]:
         return {"get": self.get}
 
 

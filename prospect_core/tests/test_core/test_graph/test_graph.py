@@ -7,7 +7,7 @@ from prospect_core.core.graph import Edge, Graph, Node
 from ...utils import escape_braces
 from .components import (
     BaseVariables,
-    Globals,
+    GlobalVariables,
     Metadata,
     PulledVariables,
     SpyAggMethods,
@@ -34,19 +34,19 @@ def test_Edge_raises_ValueError_if_dup_node_ids() -> None:
 
 
 @pytest.mark.parametrize(
-    "nodes, edges, globals",
+    "nodes, edges, global_variables",
     [
         pytest.param(
             ["node00", "node01"],
             ["edge_node00->node01"],
-            Globals(global_var0=25),
+            GlobalVariables(global_var0=25),
             id="basic_graph",
         )
     ],
-    indirect=["nodes", "edges", "globals"],
+    indirect=["nodes", "edges", "global_variables"],
 )
 def test_can_make_graph(
-    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    graph: Graph[BaseVariables, PulledVariables, Metadata, GlobalVariables],
 ) -> None:
     """Test basic graph creation."""
     assert isinstance(graph, Graph)
@@ -86,7 +86,7 @@ def test_can_make_graph(
 def test_Graph_raises_ValueError_if_nodes_id_name_not_unique(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     name_or_id: str,
@@ -106,7 +106,7 @@ def test_Graph_raises_ValueError_if_nodes_id_name_not_unique(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -146,7 +146,7 @@ def test_Graph_raises_ValueError_if_nodes_id_name_not_unique(
 def test_Graph_raises_ValueError_if_edge_id_name_not_unique(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     name_or_id: str,
@@ -166,7 +166,7 @@ def test_Graph_raises_ValueError_if_edge_id_name_not_unique(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -206,7 +206,7 @@ def test_Graph_raises_ValueError_if_edge_id_name_not_unique(
 def test_Graph_raises_ValueError_if_edge_duplicated(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     direction: str,
@@ -262,7 +262,7 @@ def test_Graph_raises_ValueError_if_edge_duplicated(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -302,7 +302,7 @@ def test_Graph_raises_ValueError_if_edge_duplicated(
 def test_Graph_raises_ValueError_if_missing_pull_method_key(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     direction: str,
@@ -323,7 +323,7 @@ def test_Graph_raises_ValueError_if_missing_pull_method_key(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -363,7 +363,7 @@ def test_Graph_raises_ValueError_if_missing_pull_method_key(
 def test_Graph_raises_ValueError_if_missing_agg_method_key(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     direction: str,
@@ -384,7 +384,7 @@ def test_Graph_raises_ValueError_if_missing_agg_method_key(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -424,7 +424,7 @@ def test_Graph_raises_ValueError_if_missing_agg_method_key(
 def test_Graph_raises_ValueError_if_missing_node(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     direction: str,
@@ -445,7 +445,7 @@ def test_Graph_raises_ValueError_if_missing_node(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -465,7 +465,7 @@ def test_Graph_raises_ValueError_if_missing_node(
 def test_Graph_warns_if_orphan_node(
     nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
     edges: list[Edge],
-    globals: Globals,
+    global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
     node01: Node[BaseVariables, PulledVariables, Metadata],
@@ -480,7 +480,7 @@ def test_Graph_warns_if_orphan_node(
         _ = Graph(
             nodes=nodes,
             edges=edges,
-            globals=globals,
+            global_variables=global_variables,
             pull_methods=spy_pull_methods.as_dict(),
             agg_methods=spy_agg_methods.as_dict(),
         )
@@ -507,7 +507,7 @@ def test_Graph_warns_if_orphan_node(
     indirect=["nodes", "edges"],
 )
 def test_Graph_ids(
-    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    graph: Graph[BaseVariables, PulledVariables, Metadata, GlobalVariables],
     expected_node_ids: list[int],
     expected_edge_ids: list[int],
 ) -> None:
@@ -528,7 +528,7 @@ def test_Graph_ids(
     indirect=["nodes", "edges"],
 )
 def test_Graph_as_dict(
-    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    graph: Graph[BaseVariables, PulledVariables, Metadata, GlobalVariables],
     node00: SpyNode,
     node01: SpyNode,
     node02: SpyNode,
@@ -575,7 +575,7 @@ def test_Graph_as_dict(
     indirect=["nodes", "edges"],
 )
 def test_Graph_leaf_root_nodes(
-    graph: Graph[BaseVariables, PulledVariables, Metadata, Globals],
+    graph: Graph[BaseVariables, PulledVariables, Metadata, GlobalVariables],
     expected_root_node_ids: list[int],
     expected_leaf_node_ids: list[int],
 ) -> None:

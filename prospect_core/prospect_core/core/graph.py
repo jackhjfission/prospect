@@ -24,7 +24,7 @@ from pydantic import AfterValidator, BaseModel, Field, model_validator
 BaseVariablesT = TypeVar("BaseVariablesT", bound=Mapping[str, Any])
 PulledVariablesT = TypeVar("PulledVariablesT", bound=Mapping[str, Any])
 MetadataT = TypeVar("MetadataT", bound=Mapping[str, Any])
-GlobalsT = TypeVar("GlobalsT", bound=Mapping[str, Any])
+GlobalVariablesT = TypeVar("GlobalVariablesT", bound=Mapping[str, Any])
 
 
 class Direction(StrEnum):
@@ -34,13 +34,13 @@ class Direction(StrEnum):
 
 @runtime_checkable
 class PullMethod(
-    Protocol, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalsT]
+    Protocol, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
 ):
     def __call__(
         self,
         direction: Direction,
         edge: "Edge",
-        graph: "Graph[BaseVariablesT, PulledVariablesT, MetadataT, GlobalsT]",
+        graph: "Graph[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]",
     ) -> PulledVariablesT: ...
 
 
@@ -149,7 +149,9 @@ class Edge(BaseModel):
         return self
 
 
-class Graph(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalsT]):
+class Graph(
+    BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
+):
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -162,9 +164,9 @@ class Graph(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, Glob
         AfterValidator(_validate_id_and_name_unique),
         AfterValidator(_validate_no_duped_edges),
     ]
-    globals: GlobalsT
+    global_variables: GlobalVariablesT
     pull_methods: dict[
-        str, PullMethod[BaseVariablesT, PulledVariablesT, MetadataT, GlobalsT]
+        str, PullMethod[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
     ] = Field(exclude=True)
     agg_methods: dict[
         str, AggregationMethod[BaseVariablesT, PulledVariablesT, MetadataT]
