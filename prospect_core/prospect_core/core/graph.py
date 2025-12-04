@@ -15,10 +15,6 @@ from typing import (
 
 from pydantic import AfterValidator, BaseModel, Field, model_validator
 
-# edges should make their own names
-# edges should not be able to have upstream and downstream node idsequal
-
-
 # TypeVar for dict-like types, particularly TypedDict subclasses
 # Using Mapping as the bound since TypedDict is compatible with Mapping
 BaseVariablesT = TypeVar("BaseVariablesT", bound=Mapping[str, Any])
