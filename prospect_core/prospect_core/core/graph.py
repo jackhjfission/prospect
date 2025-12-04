@@ -15,10 +15,6 @@ from typing import (
 
 from pydantic import AfterValidator, BaseModel, Field, model_validator
 
-# edges should make their own names
-# edges should not be able to have upstream and downstream node idsequal
-
-
 # TypeVar for dict-like types, particularly TypedDict subclasses
 # Using Mapping as the bound since TypedDict is compatible with Mapping
 BaseVariablesT = TypeVar("BaseVariablesT", bound=Mapping[str, Any])
@@ -28,6 +24,8 @@ GlobalVariablesT = TypeVar("GlobalVariablesT", bound=Mapping[str, Any])
 
 
 class Direction(StrEnum):
+    """Enum representing the direction of data flow in a graph edge."""
+
     from_upstream = "FROM_UPSTREAM"
     from_downstream = "FROM_DOWNSTREAM"
 
@@ -36,6 +34,12 @@ class Direction(StrEnum):
 class PullMethod(
     Protocol, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
 ):
+    """Protocol for methods that pull variables from connected nodes via edges.
+
+    A pull method retrieves data from a neighboring node (either upstream or downstream)
+    through an edge connection, returning the pulled variables.
+    """
+
     def __call__(
         self,
         direction: Direction,
@@ -46,6 +50,12 @@ class PullMethod(
 
 @runtime_checkable
 class AggregationMethod(Protocol, Generic[BaseVariablesT, PulledVariablesT, MetadataT]):
+    """Protocol for methods that aggregate pulled variables into a node.
+
+    An aggregation method takes a list of pulled variables from multiple edges
+    and combines them to update the node's state.
+    """
+
     def __call__(
         self,
         node: "Node[BaseVariablesT, PulledVariablesT, MetadataT]",
@@ -54,6 +64,8 @@ class AggregationMethod(Protocol, Generic[BaseVariablesT, PulledVariablesT, Meta
 
 
 class HasIdAndName(Protocol):
+    """Protocol for objects that have both an id and name property."""
+
     @property
     def id(self) -> int: ...
 
@@ -62,7 +74,17 @@ class HasIdAndName(Protocol):
 
 
 def _validate_id_and_name_unique(value: list[HasIdAndName]) -> list[HasIdAndName]:
+    """Validate that all items in the list have unique IDs and names.
 
+    Args:
+        value: List of items that have id and name properties.
+
+    Returns:
+        The input list if validation passes.
+
+    Raises:
+        ValueError: If duplicate IDs or names are found.
+    """
     id_v_dict: dict[int, list[tuple[int, str]]] = {_.id: [] for _ in value}
     for v in value:
         id_v_dict[v.id].append((v.id, v.name))
@@ -88,6 +110,21 @@ def _validate_id_and_name_unique(value: list[HasIdAndName]) -> list[HasIdAndName
 
 
 def _validate_no_duped_edges(edges: list["Edge"]) -> list["Edge"]:
+    """Validate that no duplicate edges exist and the graph is acyclic.
+
+    Checks for:
+    - Duplicate edges in the same direction (same upstream and downstream node pair)
+    - Bidirectional edges that would create cycles
+
+    Args:
+        edges: List of edges to validate.
+
+    Returns:
+        The input list if validation passes.
+
+    Raises:
+        ValueError: If duplicate or bidirectional edges are found.
+    """
     # Track edges by (upstream_node_id, downstream_node_id) tuple
     seen_edges: dict[tuple[int, int], list[tuple[int, str]]] = {}
     duplicate_same_direction = []
@@ -123,6 +160,23 @@ def _validate_no_duped_edges(edges: list["Edge"]) -> list["Edge"]:
 
 
 class Node(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT]):
+    """Represents a node in a directed acyclic graph.
+
+    A node stores base variables, pulled variables from connected nodes,
+    metadata, and configuration for aggregation methods.
+
+    Attributes:
+        id: Unique integer identifier for the node.
+        name: Unique string name for the node.
+        base_variables: The node's core data.
+        pulled_variables: Variables pulled from connected nodes via edges.
+        metadata: Additional metadata associated with the node.
+        pull_from_downstream_agg_key: Key for the aggregation method when pulling from downstream.
+        pull_from_upstream_agg_key: Key for the aggregation method when pulling from upstream.
+        pulled_from_downstream: Flag indicating if data has been pulled from downstream nodes.
+        pulled_from_upstream: Flag indicating if data has been pulled from upstream nodes.
+    """
+
     id: int
     name: str
     base_variables: BaseVariablesT
@@ -135,6 +189,20 @@ class Node(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT]):
 
 
 class Edge(BaseModel):
+    """Represents a directed edge connecting two nodes in a graph.
+
+    An edge defines the connection between an upstream node and a downstream node,
+    along with the methods to use for pulling data in each direction.
+
+    Attributes:
+        id: Unique integer identifier for the edge.
+        name: Unique string name for the edge.
+        downstream_node_id: ID of the node receiving data through this edge.
+        upstream_node_id: ID of the node providing data through this edge.
+        downstream_method_key: Key for the pull method to use when pulling from downstream.
+        upstream_method_key: Key for the pull method to use when pulling from upstream.
+    """
+
     id: int
     name: str
     downstream_node_id: int
@@ -144,6 +212,7 @@ class Edge(BaseModel):
 
     @model_validator(mode="after")
     def _no_dup_node_ids(self) -> Self:
+        """Validate that upstream and downstream node IDs are different to prevent self-loops."""
         if self.downstream_node_id == self.upstream_node_id:
             raise ValueError(f"edge: {self.id, self.name} has a cyclical dependency.")
         return self
@@ -152,6 +221,23 @@ class Edge(BaseModel):
 class Graph(
     BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
 ):
+    """Represents a directed acyclic graph (DAG) with nodes and edges.
+
+    The Graph class manages a collection of nodes connected by edges, along with
+    methods for pulling and aggregating data between connected nodes. It enforces
+    several constraints:
+    - Node and edge IDs and names must be unique
+    - No duplicate or bidirectional edges (maintains acyclic property)
+    - All referenced pull and aggregation method keys must exist
+    - All edge node IDs must reference existing nodes
+
+    Attributes:
+        nodes: Sequence of Node objects in the graph.
+        edges: Sequence of Edge objects connecting the nodes.
+        global_variables: Global variables accessible to all nodes and edges.
+        pull_methods: Dictionary mapping method keys to pull method implementations.
+        agg_methods: Dictionary mapping method keys to aggregation method implementations.
+    """
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -174,6 +260,7 @@ class Graph(
 
     @model_validator(mode="after")
     def _validate_pull_method_keys(self) -> Self:
+        """Validate that all edge pull method keys exist in pull_methods dict."""
         keys = self.pull_methods.keys()
         edges_with_missing_upstream_keys: list[Edge] = []
         for edge in self.edges:
@@ -197,6 +284,7 @@ class Graph(
 
     @model_validator(mode="after")
     def _validate_agg_method_keys(self) -> Self:
+        """Validate that all node aggregation method keys exist in agg_methods dict."""
         keys = self.agg_methods.keys()
         nodes_with_missing_downstream_keys: list[
             Node[BaseVariablesT, PulledVariablesT, MetadataT]
@@ -224,6 +312,7 @@ class Graph(
 
     @model_validator(mode="after")
     def _validate_edge_node_ids(self) -> Self:
+        """Validate that all edge node IDs reference existing nodes in the graph."""
         node_ids = {node.id for node in self.nodes}
         edges_with_invalid_upstream_node_ids: list[Edge] = []
         for edge in self.edges:
@@ -250,6 +339,7 @@ class Graph(
 
     @model_validator(mode="after")
     def _warn_orphaned_nodes(self) -> Self:
+        """Warn about orphaned nodes (nodes with no edges connected to them)."""
         # Find all node IDs that appear in edges (either as upstream or downstream)
         nodes_with_edges = set()
         for edge in self.edges:
@@ -274,24 +364,29 @@ class Graph(
 
     @cached_property
     def node_ids(self) -> list[int]:
+        """Return a sorted list of all node IDs in the graph."""
         return sorted([_.id for _ in self.nodes])
 
     @cached_property
     def edge_ids(self) -> list[int]:
+        """Return a sorted list of all edge IDs in the graph."""
         return sorted([_.id for _ in self.edges])
 
     @cached_property
     def nodes_as_dict(
         self,
     ) -> dict[int, Node[BaseVariablesT, PulledVariablesT, MetadataT]]:
+        """Return a dictionary mapping node IDs to Node objects."""
         return {_.id: _ for _ in self.nodes}
 
     @cached_property
     def edges_as_dict(self) -> dict[int, Edge]:
+        """Return a dictionary mapping edge IDs to Edge objects."""
         return {_.id: _ for _ in self.edges}
 
     @cached_property
     def root_nodes(self) -> list[Node[BaseVariablesT, PulledVariablesT, MetadataT]]:
+        """Return nodes with no incoming edges (never appear as downstream_node_id)."""
         # find nodes with no edges pointing upstream (eg, they are never present in downstream_node_id)
         # these are the root nodes
         non_root_node_ids = {_.downstream_node_id for _ in self.edges}
@@ -300,6 +395,7 @@ class Graph(
 
     @cached_property
     def leaf_nodes(self) -> list[Node[BaseVariablesT, PulledVariablesT, MetadataT]]:
+        """Return nodes with no outgoing edges (never appear as upstream_node_id)."""
         # find nodes with no edges pointing downstream (eg, they are never present in upstream_node_id)
         # these are the leaf nodes
         non_leaf_node_ids = {_.upstream_node_id for _ in self.edges}
