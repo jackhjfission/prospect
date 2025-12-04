@@ -142,6 +142,12 @@ class Edge(BaseModel):
     downstream_method_key: str
     upstream_method_key: str
 
+    @model_validator(mode="after")
+    def _no_dup_node_ids(self) -> Self:
+        if self.downstream_node_id == self.upstream_node_id:
+            raise ValueError(f"edge: {self.id, self.name} has a cyclical dependency.")
+        return self
+
 
 class Graph(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalsT]):
 

@@ -16,6 +16,23 @@ from .components import (
 )
 
 
+def test_Edge_raises_ValueError_if_dup_node_ids() -> None:
+    with pytest.raises(
+        ValueError,
+        match=escape_braces(
+            r"1 validation error for Edge\n  Value error, edge: (5, 'foo') has a cyclical dependency."
+        ),
+    ):
+        _ = Edge(
+            id=5,
+            name="foo",
+            downstream_node_id=0,
+            upstream_node_id=0,
+            downstream_method_key="foo",
+            upstream_method_key="foo",
+        )
+
+
 @pytest.mark.parametrize(
     "nodes, edges, globals",
     [
