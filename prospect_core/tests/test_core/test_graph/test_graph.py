@@ -84,7 +84,7 @@ def test_can_make_graph(
     ],
 )
 def test_Graph_raises_ValueError_if_nodes_id_name_not_unique(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
@@ -144,7 +144,7 @@ def test_Graph_raises_ValueError_if_nodes_id_name_not_unique(
     ],
 )
 def test_Graph_raises_ValueError_if_edge_id_name_not_unique(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
@@ -204,7 +204,7 @@ def test_Graph_raises_ValueError_if_edge_id_name_not_unique(
     ],
 )
 def test_Graph_raises_ValueError_if_edge_duplicated(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
@@ -300,7 +300,7 @@ def test_Graph_raises_ValueError_if_edge_duplicated(
     ],
 )
 def test_Graph_raises_ValueError_if_missing_pull_method_key(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
@@ -361,7 +361,7 @@ def test_Graph_raises_ValueError_if_missing_pull_method_key(
     ],
 )
 def test_Graph_raises_ValueError_if_missing_agg_method_key(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
@@ -422,7 +422,7 @@ def test_Graph_raises_ValueError_if_missing_agg_method_key(
     ],
 )
 def test_Graph_raises_ValueError_if_missing_node(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
@@ -463,12 +463,12 @@ def test_Graph_raises_ValueError_if_missing_node(
     indirect=["nodes", "edges"],
 )
 def test_Graph_warns_if_orphan_node(
-    nodes: list[Node[BaseVariables, PulledVariables, Metadata]],
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
     edges: list[Edge],
     global_variables: GlobalVariables,
     spy_agg_methods: SpyAggMethods,
     spy_pull_methods: SpyPullMethods,
-    node01: Node[BaseVariables, PulledVariables, Metadata],
+    node01: Node[BaseVariables, PulledVariables, Metadata, GlobalVariables],
 ) -> None:
     """Test that Graph warns about orphaned nodes (nodes with no edges)."""
 
@@ -586,3 +586,91 @@ def test_Graph_leaf_root_nodes(
 
     leaf_node_ids = [_.id for _ in graph.leaf_nodes]
     assert leaf_node_ids == expected_leaf_node_ids
+
+
+@pytest.mark.parametrize(
+    "nodes, edges, expected_upstream, expected_downstream",
+    [
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node00->node02"],
+            {
+                0: [],
+                1: [0],
+                2: [0],
+            },
+            {
+                0: [1, 2],
+                1: [],
+                2: [],
+            },
+            id="one_root_two_leaves",
+        ),
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node02", "edge_node01->node02"],
+            {
+                0: [],
+                1: [],
+                2: [0, 1],
+            },
+            {
+                0: [2],
+                1: [2],
+                2: [],
+            },
+            id="two_roots_one_leaf",
+        ),
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node01->node02"],
+            {
+                0: [],
+                1: [0],
+                2: [0, 1],
+            },
+            {0: [1, 2], 1: [2], 2: []},
+            id="one_root_one_leaf",
+        ),
+    ],
+    indirect=["nodes", "edges"],
+)
+def test_Graph_upstream_downstream_node_ids(
+    graph: Graph[BaseVariables, PulledVariables, Metadata, GlobalVariables],
+    expected_upstream: dict[int, list[int]],
+    expected_downstream: dict[int, list[int]],
+) -> None:
+
+    assert graph.upstream_node_ids == expected_upstream
+    assert graph.downstream_node_ids == expected_downstream
+
+
+@pytest.mark.parametrize(
+    "nodes, edges, expected_match",
+    [
+        pytest.param(
+            ["node00", "node01", "node02"],
+            ["edge_node00->node01", "edge_node01->node02", "edge_node02->node00"],
+            r"Maximum recursion depth reached when identifying downstream nodes. This indicates that there are cyclic properties in your graph.",
+            id="three_cyclic",
+        ),
+    ],
+    indirect=["nodes", "edges"],
+)
+def test_Graph_raises_ValueError_if_cyclic(
+    nodes: list[Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]],
+    edges: list[Edge],
+    global_variables: GlobalVariables,
+    spy_agg_methods: SpyAggMethods,
+    spy_pull_methods: SpyPullMethods,
+    expected_match: str,
+) -> None:
+
+    with pytest.raises(ValueError, match=escape_braces(expected_match)):
+        _ = Graph(
+            nodes=nodes,
+            edges=edges,
+            global_variables=global_variables,
+            pull_methods=spy_pull_methods.as_dict(),
+            agg_methods=spy_agg_methods.as_dict(),
+        )

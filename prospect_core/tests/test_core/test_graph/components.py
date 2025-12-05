@@ -36,9 +36,9 @@ class SpyAggMethods(BaseModel):
 
     def pass_through(
         self,
-        node: Node[BaseVariables, PulledVariables, Metadata],
+        node: Node[BaseVariables, PulledVariables, Metadata, GlobalVariables],
         pulled_variables: list[PulledVariables],
-    ) -> Node[BaseVariables, PulledVariables, Metadata]:
+    ) -> Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]:
 
         self._call_logs.append(
             ("sum_var0", {"node": node, "pulled_variables": pulled_variables})
@@ -47,7 +47,10 @@ class SpyAggMethods(BaseModel):
 
     def as_dict(
         self,
-    ) -> dict[str, AggregationMethod[BaseVariables, PulledVariables, Metadata]]:
+    ) -> dict[
+        str,
+        AggregationMethod[BaseVariables, PulledVariables, Metadata, GlobalVariables],
+    ]:
         return {"pass_through": self.pass_through}
 
 
@@ -78,5 +81,5 @@ class SpyPullMethods(BaseModel):
         return {"get": self.get}
 
 
-class SpyNode(Node[BaseVariables, PulledVariables, Metadata]):
+class SpyNode(Node[BaseVariables, PulledVariables, Metadata, GlobalVariables]):
     _call_log: list[tuple[str, dict[str, Any]]] = PrivateAttr(default_factory=list)

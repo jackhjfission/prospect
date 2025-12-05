@@ -49,7 +49,9 @@ class PullMethod(
 
 
 @runtime_checkable
-class AggregationMethod(Protocol, Generic[BaseVariablesT, PulledVariablesT, MetadataT]):
+class AggregationMethod(
+    Protocol, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
+):
     """Protocol for methods that aggregate pulled variables into a node.
 
     An aggregation method takes a list of pulled variables from multiple edges
@@ -58,9 +60,9 @@ class AggregationMethod(Protocol, Generic[BaseVariablesT, PulledVariablesT, Meta
 
     def __call__(
         self,
-        node: "Node[BaseVariablesT, PulledVariablesT, MetadataT]",
+        node: "Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]",
         pulled_variables: list[PulledVariablesT],
-    ) -> "Node[BaseVariablesT, PulledVariablesT, MetadataT]": ...
+    ) -> "Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]": ...
 
 
 class HasIdAndName(Protocol):
@@ -159,7 +161,9 @@ def _validate_no_duped_edges(edges: list["Edge"]) -> list["Edge"]:
     return edges
 
 
-class Node(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT]):
+class Node(
+    BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
+):
     """Represents a node in a directed acyclic graph.
 
     A node stores base variables, pulled variables from connected nodes,
@@ -186,6 +190,54 @@ class Node(BaseModel, Generic[BaseVariablesT, PulledVariablesT, MetadataT]):
     pull_from_upstream_agg_key: str
     pulled_from_downstream: bool = False
     pulled_from_upstream: bool = False
+
+    def discover_upstream(
+        self,
+        graph: "Graph[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]",
+    ) -> list[int]:
+        """Recursively discover all upstream nodes connected to this node.
+
+        Traverses the graph recursively following edges where this node is downstream,
+        collecting all ancestor node IDs in the dependency chain.
+
+        Args:
+            graph: The graph containing this node.
+
+        Returns:
+            Sorted list of unique node IDs for all upstream nodes.
+        """
+        my_edges = [_ for _ in graph.edges if _.downstream_node_id == self.id]
+        my_upstream_nodes: list[int] = []
+        for edge in my_edges:
+            node = graph.nodes_as_dict[edge.upstream_node_id]
+            output = node.discover_upstream(graph=graph)
+            output.append(edge.upstream_node_id)
+            my_upstream_nodes.extend(output)
+        return sorted(set(my_upstream_nodes))
+
+    def discover_downstream(
+        self,
+        graph: "Graph[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]",
+    ) -> list[int]:
+        """Recursively discover all downstream nodes connected to this node.
+
+        Traverses the graph recursively following edges where this node is upstream,
+        collecting all descendant node IDs in the dependency chain.
+
+        Args:
+            graph: The graph containing this node.
+
+        Returns:
+            Sorted list of unique node IDs for all downstream nodes.
+        """
+        my_edges = [_ for _ in graph.edges if _.upstream_node_id == self.id]
+        my_downstream_nodes: list[int] = []
+        for edge in my_edges:
+            node = graph.nodes_as_dict[edge.downstream_node_id]
+            output = node.discover_downstream(graph=graph)
+            output.append(edge.downstream_node_id)
+            my_downstream_nodes.extend(output)
+        return sorted(set(my_downstream_nodes))
 
 
 class Edge(BaseModel):
@@ -242,7 +294,7 @@ class Graph(
     model_config = {"arbitrary_types_allowed": True}
 
     nodes: Annotated[
-        Sequence[Node[BaseVariablesT, PulledVariablesT, MetadataT]],
+        Sequence[Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]],
         AfterValidator(_validate_id_and_name_unique),
     ]
     edges: Annotated[
@@ -255,7 +307,10 @@ class Graph(
         str, PullMethod[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
     ] = Field(exclude=True)
     agg_methods: dict[
-        str, AggregationMethod[BaseVariablesT, PulledVariablesT, MetadataT]
+        str,
+        AggregationMethod[
+            BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT
+        ],
     ] = Field(exclude=True)
 
     @model_validator(mode="after")
@@ -287,14 +342,14 @@ class Graph(
         """Validate that all node aggregation method keys exist in agg_methods dict."""
         keys = self.agg_methods.keys()
         nodes_with_missing_downstream_keys: list[
-            Node[BaseVariablesT, PulledVariablesT, MetadataT]
+            Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
         ] = []
         for node in self.nodes:
             if node.pull_from_downstream_agg_key not in keys:
                 nodes_with_missing_downstream_keys.append(node)
 
         nodes_with_missing_upstream_keys: list[
-            Node[BaseVariablesT, PulledVariablesT, MetadataT]
+            Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
         ] = []
         for node in self.nodes:
             if node.pull_from_upstream_agg_key not in keys:
@@ -347,7 +402,9 @@ class Graph(
             nodes_with_edges.add(edge.downstream_node_id)
 
         # Find orphaned nodes (nodes with no edges)
-        orphaned_nodes: list[Node[BaseVariablesT, PulledVariablesT, MetadataT]] = []
+        orphaned_nodes: list[
+            Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]
+        ] = []
         for node in self.nodes:
             if node.id not in nodes_with_edges:
                 orphaned_nodes.append(node)
@@ -358,6 +415,35 @@ class Graph(
                 f"{[(node.id, node.name) for node in orphaned_nodes]}",
                 UserWarning,
                 stacklevel=2,
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_acyclic(self) -> Self:
+        """Validate that the graph is acyclic by attempting to compute all node dependencies.
+
+        Recursively computes upstream and downstream node IDs for all nodes. If cycles exist,
+        this will trigger a RecursionError, which is caught and converted to a descriptive
+        ValueError.
+
+        Raises:
+            ValueError: If cycles are detected in the graph structure.
+        """
+        try:
+            _ = self.upstream_node_ids
+        except RecursionError:
+            raise ValueError(
+                "Maximum recursion depth reached when identifying downstream nodes. "
+                "This indicates that there are cyclic properties in your graph."
+            )
+
+        try:
+            _ = self.downstream_node_ids
+        except RecursionError:
+            raise ValueError(
+                "Maximum recursion depth reached when identifying upstream nodes. "
+                "This indicates that there are cyclic properties in your graph."
             )
 
         return self
@@ -375,7 +461,7 @@ class Graph(
     @cached_property
     def nodes_as_dict(
         self,
-    ) -> dict[int, Node[BaseVariablesT, PulledVariablesT, MetadataT]]:
+    ) -> dict[int, Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]]:
         """Return a dictionary mapping node IDs to Node objects."""
         return {_.id: _ for _ in self.nodes}
 
@@ -385,7 +471,9 @@ class Graph(
         return {_.id: _ for _ in self.edges}
 
     @cached_property
-    def root_nodes(self) -> list[Node[BaseVariablesT, PulledVariablesT, MetadataT]]:
+    def root_nodes(
+        self,
+    ) -> list[Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]]:
         """Return nodes with no incoming edges (never appear as downstream_node_id)."""
         # find nodes with no edges pointing upstream (eg, they are never present in downstream_node_id)
         # these are the root nodes
@@ -394,10 +482,22 @@ class Graph(
         return [_ for _ in self.nodes if _.id in root_node_ids]
 
     @cached_property
-    def leaf_nodes(self) -> list[Node[BaseVariablesT, PulledVariablesT, MetadataT]]:
+    def leaf_nodes(
+        self,
+    ) -> list[Node[BaseVariablesT, PulledVariablesT, MetadataT, GlobalVariablesT]]:
         """Return nodes with no outgoing edges (never appear as upstream_node_id)."""
         # find nodes with no edges pointing downstream (eg, they are never present in upstream_node_id)
         # these are the leaf nodes
         non_leaf_node_ids = {_.upstream_node_id for _ in self.edges}
         leaf_node_ids = set(self.node_ids) - non_leaf_node_ids
         return [_ for _ in self.nodes if _.id in leaf_node_ids]
+
+    @cached_property
+    def upstream_node_ids(self) -> dict[int, list[int]]:
+        """Return mapping of each node ID to all its upstream (ancestor) node IDs."""
+        return {_.id: _.discover_upstream(graph=self) for _ in self.nodes}
+
+    @cached_property
+    def downstream_node_ids(self) -> dict[int, list[int]]:
+        """Return mapping of each node ID to all its downstream (descendant) node IDs."""
+        return {_.id: _.discover_downstream(graph=self) for _ in self.nodes}

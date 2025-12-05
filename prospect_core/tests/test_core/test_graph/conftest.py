@@ -113,6 +113,19 @@ def edge00_02() -> Edge:
 
 
 @pytest.fixture
+def edge02_00() -> Edge:
+    """Edge node00->node02"""
+    return Edge(
+        id=40,
+        name="edge_node02->node00",
+        upstream_node_id=2,
+        downstream_node_id=0,
+        downstream_method_key="get",
+        upstream_method_key="get",
+    )
+
+
+@pytest.fixture
 def nodes(
     node00: SpyNode,
     node01: SpyNode,
@@ -128,10 +141,15 @@ def edges(
     edge00_01: Edge,
     edge00_02: Edge,
     edge01_02: Edge,
+    edge02_00: Edge,
     request: CanSpecListOfStr,
 ) -> list[Edge]:
     """Returns a filtered list of edges."""
-    return [_ for _ in [edge00_01, edge00_02, edge01_02] if _.name in request.param]
+    return [
+        _
+        for _ in [edge00_01, edge00_02, edge01_02, edge02_00]
+        if _.name in request.param
+    ]
 
 
 @pytest.fixture
